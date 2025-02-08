@@ -1,0 +1,115 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Feb  7 21:44:59 2025
+
+@author: Vinod Makkala
+"""
+
+import fitz  # PyMuPDF for PDFs
+import docx  # python-docx for Word files
+import os
+
+def extract_text_from_pdf(pdf_path):
+    """Extract text from a PDF file."""
+    doc = fitz.open(pdf_path)
+    text = ""
+    for page in doc:
+        text += page.get_text()
+    return text.strip()
+
+# =============================================================================
+# def extract_text_from_docx(docx_path):
+#     """Extract text from a Word file."""
+#     doc = docx.Document(docx_path)
+#     text = "\n".join([para.text for para in doc.paragraphs])
+#     return text.strip()
+# =============================================================================
+
+# Test the functions
+pdf_text = extract_text_from_pdf("C:\\Users\\Vinod Makkala\\OneDrive\\Desktop\\sample.pdf")  # Change path as needed
+#docx_text = extract_text_from_docx("C:\\Users\\Vinod Makkala\\OneDrive\\Desktop\\sample.docx")  # Change path as needed
+
+print("PDF Text:", pdf_text[:500])  # Print first 500 characters
+#print("DOCX Text:", docx_text[:500])  # Print first 500 characters
+import re
+import nltk
+from nltk.corpus import stopwords
+
+# Download stopwords (Run once)
+nltk.download('stopwords')
+
+# Load stopwords
+stop_words = set(stopwords.words('english'))
+
+def clean_text(text):
+    """Clean extracted text: remove numbers, special characters, and stopwords."""
+    text = text.lower()  # Convert to lowercase
+    text = re.sub(r'\d+', '', text)  # Remove numbers
+    text = re.sub(r'[^\w\s]', '', text)  # Remove special characters
+    words = text.split()
+    words = [word for word in words if word not in stop_words]  # Remove stopwords
+    return " ".join(words)
+
+# Apply preprocessing to extracted text
+pdf_text_cleaned = clean_text(pdf_text)  
+#docx_text_cleaned = clean_text(docx_text)
+
+print("✅ Cleaned PDF Text:", pdf_text_cleaned[:500])  # Show first 500 characters
+#print("✅ Cleaned DOCX Text:", docx_text_cleaned[:500])
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.svm import SVC
+import joblib  # To save the model
+
+# Sample dataset (Replace this with real data)
+documents = [
+    "This is an important legal document related to property.",
+    "Meeting notes from today's discussion.",
+    "Advertisement for a new product launch.",
+    "Invoice for software purchase.",
+    "Random personal notes about my day.",
+    "Government notice regarding tax policy.",
+    "Spam email with promotional content."
+]
+
+labels = [1, 0, 0, 1, 0, 1, 0]  # 1 = Important, 0 = Unimportant
+
+# ✅ Convert text into numerical features (TF-IDF)
+vectorizer = TfidfVectorizer()
+X = vectorizer.fit_transform(documents)
+
+# ✅ Split into training & testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, labels, test_size=0.2, random_state=42)
+
+# ✅ Train an SVM model
+model = SVC(kernel='linear')
+model.fit(X_train, y_train)
+
+# ✅ Save the trained model & vectorizer
+joblib.dump(model, "document_classifier.pkl")
+joblib.dump(vectorizer, "vectorizer.pkl")
+
+print("✅ Model training complete! Saved as 'document_classifier.pkl'.")
+
+
+
+
+# ✅ Load the trained model and vectorizer
+model = joblib.load("document_classifier.pkl")
+vectorizer = joblib.load("vectorizer.pkl")
+
+# ✅ Function to classify a new document
+def classify_document(text):
+    """Preprocess and classify a document."""
+    text_cleaned = clean_text(text)  # Preprocess
+    text_vectorized = vectorizer.transform([text_cleaned])  # Convert to numerical format
+    prediction = model.predict(text_vectorized)  # Predict class
+    return "Important" if prediction[0] == 1 else "Unimportant"
+
+# ✅ Test with a new document
+new_doc = extract_text_from_pdf("C:\\Users\\Vinod Makkala\\OneDrive\\Desktop\\sample.pdf")  # Change path
+classification = classify_document(new_doc)
+
+print("📌 Document Classification:", classification)
+
